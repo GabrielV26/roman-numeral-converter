@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roman Numeral Convert</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#data-form').on('submit', function(event) {
+                event.preventDefault();
+
+                $.ajax({
+                    url: "{% url 'converter' %}",
+                    type: "POST",
+                    data: $(this).serialize(),
+                    success: function(response) {
+                        $('#resultado').html(response.resultado);
+                    },
+                    error: function(xhr, status, error) {
+                        $('#resultado').html('Ocorreu um erro: ' + xhr.responseText);
+                    }
+                });
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Conversor de números romanos</h1>
+        <div class="form-container">
+            <form id="data-form">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit">Enviar</button>
+            </form>
+            <div id="resultado" class="result"></div>
+        </div>
+    </div>
+</body>
+
+</html>
