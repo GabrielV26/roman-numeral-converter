@@ -89,6 +89,8 @@ def converter(request):
                 value = real_converter.roman_real_to_real(value)
             else:
                 value = real_converter.real_to_roman_real(value)
+            if value is None or value == "R$None":
+                return JsonResponse({'erro': 'Entrada inválida.'}, status=400)
             resultado = f"Valor convertido: {value}"
             return JsonResponse({'resultado': resultado})
         return JsonResponse({'erro': 'Dados inválidos.'}, status=400)
