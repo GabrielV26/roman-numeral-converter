@@ -20,6 +20,7 @@ class RomanConverter:
 
     @staticmethod
     def is_valid_roman(roman):
+        # Padrão para validar números romanos até 3999
         pattern = r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$"
         return re.match(pattern, roman) is not None
 
@@ -43,6 +44,9 @@ class RomanConverter:
         return add_values - rem_values
 
     def number_to_roman(self, number):
+        if number <= -1 or number > 3999:
+            return None
+
         roman_string = ""
         for numeral, value in self.ROMAN_NUMERAL_PATTERNS:
             while number >= value:
@@ -59,17 +63,26 @@ class RealConverter:
     def roman_real_to_real(self, value_for_converted):
         if isinstance(value_for_converted, str):
             try:
-                parte1, parte2 = value_for_converted.split(',', 1)
-                return f"R${self.roman_converter.roman_to_number(parte1)}.{self.roman_converter.roman_to_number(parte2)}"
+                parte1, parte2 = value_for_converted.split('.', 1)
+                num_part1 = self.roman_converter.roman_to_number(parte1)
+                num_part2 = self.roman_converter.roman_to_number(parte2)
+                if num_part1 is None or num_part2 is None:
+                    return None
+                return f"{num_part1}.{num_part2}"
             except ValueError:
-                return f"R${self.roman_converter.roman_to_number(value_for_converted)}"
+                return f"{self.roman_converter.roman_to_number(value_for_converted)}"
         return None
 
     def real_to_roman_real(self, value_for_converted):
+        if value_for_converted <= 0:
+            return None
         if isinstance(value_for_converted, float):
             text_convert = str(value_for_converted)
             parte1, parte2 = text_convert.split('.', 1)
-            return f"{self.roman_converter.number_to_roman(int(parte1))}.{self.roman_converter.number_to_roman(int(parte2))}"
+            if parte2 == '0':
+                return f"{self.roman_converter.number_to_roman(int(parte1))}"
+            else:
+                return f"{self.roman_converter.number_to_roman(int(parte1))}.{self.roman_converter.number_to_roman(int(parte2))}"
         else:
             return self.roman_converter.number_to_roman(value_for_converted)
 
@@ -84,14 +97,14 @@ def converter(request):
         form = DataInputForm(request.POST)
         if form.is_valid():
             value = form.cleaned_data['value']
+            print(value)
             real_converter = RealConverter()
             if isinstance(value, str):
                 value = real_converter.roman_real_to_real(value)
             else:
                 value = real_converter.real_to_roman_real(value)
-            if value is None or value == "R$None":
+            if value is None or value == "None":
                 return JsonResponse({'erro': 'Entrada inválida.'}, status=400)
-            resultado = f"Valor convertido: {value}"
-            return JsonResponse({'resultado': resultado})
+            return JsonResponse({'resultado': f"Valor convertido: {value}"})
         return JsonResponse({'erro': 'Dados inválidos.'}, status=400)
     return JsonResponse({'erro': 'Método não permitido.'}, status=405)

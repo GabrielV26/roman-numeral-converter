@@ -21,7 +21,8 @@
                         $('#resultado').html(response.resultado);
                     },
                     error: function(xhr, status, error) {
-                        $('#resultado').html('Entrada inválida');
+                        var response = JSON.parse(xhr.responseText);
+                        $('#resultado').html(response.erro);
                     }
                 });
             });
