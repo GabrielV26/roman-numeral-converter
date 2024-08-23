@@ -17,7 +17,8 @@ class DataInputForm(forms.ModelForm):
                 'rows': 10,
                 'style': 'width: 100%;',
                 'required': '',
-                'id': 'id_value'
+                'id': 'id_value',
+                'placeholder': 'Selecione o tipo de conversão'
             }
         )
 

@@ -21,7 +21,8 @@
                         $('#resultado').html(response.resultado);
                     },
                     error: function(xhr, status, error) {
-                        $('#resultado').html('Ocorreu um erro: ' + xhr.responseText);
+                        var response = JSON.parse(xhr.responseText);
+                        $('#resultado').html(response.erro);
                     }
                 });
             });
