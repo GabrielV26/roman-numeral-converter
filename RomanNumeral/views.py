@@ -1,110 +1,124 @@
-from django.shortcuts import render
-from django.http import JsonResponse, HttpResponseBadRequest
-from .models import DataInput
-from .forms import DataInputForm
-from .choices import DataTypeChoices
-import requests
-import json
 import re
 
 
 class RomanConverter:
+    """Convert standard Roman numerals in the range 1..3999."""
+
     ROMAN_NUMERALS = {
-        'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000
+        "I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000
     }
+    ROMAN_NUMERAL_PATTERNS = (
+        ("M", 1000), ("CM", 900), ("D", 500), ("CD", 400),
+        ("C", 100), ("XC", 90), ("L", 50), ("XL", 40),
+        ("X", 10), ("IX", 9), ("V", 5), ("IV", 4), ("I", 1),
+    )
+    ROMAN_PATTERN = re.compile(
+        r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$"
+    )
 
-    ROMAN_NUMERAL_PATTERNS = [
-        ('M', 1000), ('CM', 900), ('D', 500), ('CD', 400), ('C', 100), ('XC', 90),
-        ('L', 50), ('XL', 40), ('X', 10), ('IX', 9), ('V', 5), ('IV', 4), ('I', 1)
-    ]
+    @classmethod
+    def is_valid_roman(cls, roman):
+        if not isinstance(roman, str) or not roman:
+            return False
+        return cls.ROMAN_PATTERN.fullmatch(roman.strip().upper()) is not None and any(
+            char in cls.ROMAN_NUMERALS for char in roman
+        )
 
-    @staticmethod
-    def is_valid_roman(roman):
-        # Padrão para validar números romanos até 3999
-        pattern = r"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$"
-        return re.match(pattern, roman) is not None
-
-    def roman_to_number(self, roman_numeral):
-        if not self.is_valid_roman(roman_numeral.upper()):
+    @classmethod
+    def roman_to_number(cls, roman_numeral):
+        if not isinstance(roman_numeral, str):
             return None
-
-        add_values = 0
-        rem_values = 0
-        old_value = 0
-
+        roman_numeral = roman_numeral.strip().upper()
+        if not cls.is_valid_roman(roman_numeral):
+            return None
+        total = 0
+        previous = 0
         for char in reversed(roman_numeral):
-            value = self.ROMAN_NUMERALS[char.upper()]
+            value = cls.ROMAN_NUMERALS[char]
+            total += -value if value < previous else value
+            previous = max(previous, value)
+        return total
 
-            if value > add_values or value == old_value:
-                old_value = value
-                add_values += value
-            elif value < add_values:
-                rem_values += value
-
-        return add_values - rem_values
-
-    def number_to_roman(self, number):
-        if number <= -1 or number > 3999:
+    @classmethod
+    def number_to_roman(cls, number):
+        if isinstance(number, bool) or not isinstance(number, int) or not 1 <= number <= 3999:
             return None
-
-        roman_string = ""
-        for numeral, value in self.ROMAN_NUMERAL_PATTERNS:
-            while number >= value:
-                roman_string += numeral
-                number -= value
-
-        return roman_string
+        result = []
+        for numeral, value in cls.ROMAN_NUMERAL_PATTERNS:
+            count, number = divmod(number, value)
+            result.extend([numeral] * count)
+        return "".join(result)
 
 
 class RealConverter:
+    """
+    Convert the project's custom dotted notation, e.g. 25.25 <-> XXV.XXV.
+    Each side is converted as an independent Roman numeral; this is not a
+    standard Roman representation of decimal fractions.
+    """
+
     def __init__(self):
         self.roman_converter = RomanConverter()
 
-    def roman_real_to_real(self, value_for_converted):
-        if isinstance(value_for_converted, str):
-            try:
-                parte1, parte2 = value_for_converted.split('.', 1)
-                num_part1 = self.roman_converter.roman_to_number(parte1)
-                num_part2 = self.roman_converter.roman_to_number(parte2)
-                if num_part1 is None or num_part2 is None:
-                    return None
-                return f"{num_part1}.{num_part2}"
-            except ValueError:
-                return f"{self.roman_converter.roman_to_number(value_for_converted)}"
-        return None
-
-    def real_to_roman_real(self, value_for_converted):
-        if value_for_converted <= 0:
+    def roman_real_to_real(self, value):
+        if not isinstance(value, str):
             return None
-        if isinstance(value_for_converted, float):
-            text_convert = str(value_for_converted)
-            parte1, parte2 = text_convert.split('.', 1)
-            if parte2 == '0':
-                return f"{self.roman_converter.number_to_roman(int(parte1))}"
-            else:
-                return f"{self.roman_converter.number_to_roman(int(parte1))}.{self.roman_converter.number_to_roman(int(parte2))}"
-        else:
-            return self.roman_converter.number_to_roman(value_for_converted)
+        parts = value.strip().upper().split(".")
+        if len(parts) > 2 or any(not part for part in parts):
+            return None
+        converted = [self.roman_converter.roman_to_number(part) for part in parts]
+        if any(number is None for number in converted):
+            return None
+        return ".".join(str(number) for number in converted)
+
+    def real_to_roman_real(self, value):
+        text = str(value).strip()
+        if not re.fullmatch(r"d+(?:.d+)?", text):
+            return None
+        parts = text.split(".")
+        converted = []
+        for part in parts:
+            # A zero fractional component is represented by the integer part alone.
+            number = int(part)
+            if number == 0 and len(parts) == 2 and part == parts[-1]:
+                return self.roman_converter.number_to_roman(int(parts[0]))
+            roman = self.roman_converter.number_to_roman(number)
+            if roman is None:
+                return None
+            converted.append(roman)
+        return ".".join(converted)
+
+
+from django.http import JsonResponse
+from django.shortcuts import render
+from .choices import DataTypeChoices
+from .forms import DataInputForm
 
 
 def index(request):
-    form = DataInputForm()
-    return render(request, 'index.html', {'form': form})
+    return render(request, "index.html", {"form": DataInputForm()})
 
 
 def converter(request):
-    if request.method == 'POST':
-        form = DataInputForm(request.POST)
-        if form.is_valid():
-            value = form.cleaned_data['value']
-            print(value)
-            real_converter = RealConverter()
-            if isinstance(value, str):
-                value = real_converter.roman_real_to_real(value)
-            else:
-                value = real_converter.real_to_roman_real(value)
-            if value is None or value == "None":
-                return JsonResponse({'erro': 'Entrada inválida.'}, status=400)
-            return JsonResponse({'resultado': f"Valor convertido: {value}"})
-        return JsonResponse({'erro': 'Dados inválidos.'}, status=400)
-    return JsonResponse({'erro': 'Método não permitido.'}, status=405)
+    if request.method != "POST":
+        return JsonResponse({"erro": "Método não permitido."}, status=405)
+
+    form = DataInputForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({"erro": "Informe um tipo de conversão e um valor válido."}, status=400)
+
+    value = form.cleaned_data["value"]
+    data_type = form.cleaned_data["data_type"]
+    converter_service = RealConverter()
+
+    if data_type == DataTypeChoices.TEXT:
+        result = converter_service.roman_real_to_real(value)
+    elif data_type == DataTypeChoices.FLOAT:
+        result = converter_service.real_to_roman_real(value)
+    else:
+        result = None
+
+    if result is None:
+        return JsonResponse({"erro": "Entrada inválida. Confira o formato e os limites aceitos."}, status=400)
+
+    return JsonResponse({"resultado": f"Valor convertido: {result}"})
