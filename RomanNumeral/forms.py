@@ -1,39 +1,33 @@
 from django import forms
-from .models import DataInput
+
 from .choices import DataTypeChoices
+from .models import DataInput
 
 
 class DataInputForm(forms.ModelForm):
     class Meta:
         model = DataInput
-        fields = ['data_type', 'value']
+        fields = ["data_type", "value"]
+        labels = {
+            "data_type": "Tipo de conversão",
+            "value": "Valor",
+        }
 
     def __init__(self, *args, **kwargs):
-        super(DataInputForm, self).__init__(*args, **kwargs)
-        self.fields['value'].widget = forms.Textarea(
-            attrs={
-                'name': 'value',
-                'cols': 40,
-                'rows': 10,
-                'style': 'width: 100%;',
-                'required': '',
-                'id': 'id_value',
-                'placeholder': 'Selecione o tipo de conversão'
-            }
-        )
+        super().__init__(*args, **kwargs)
+        self.fields["value"].widget = forms.Textarea(attrs={
+            "cols": 40,
+            "rows": 3,
+            "style": "width: 100%;",
+            "placeholder": "Digite um número ou numeral romano",
+            "maxlength": 32,
+        })
 
     def clean_value(self):
-        data_type = self.cleaned_data.get('data_type')
-        value = self.cleaned_data.get('value')
-        if data_type == DataTypeChoices.TEXT:
-            try:
-                return value
-            except ValueError:
-                raise forms.ValidationError('O valor deve ser um número romano.')
-        elif data_type == DataTypeChoices.FLOAT:
-            try:
-                return float(value)
-            except ValueError:
-                raise forms.ValidationError('O valor deve ser um número real.')
-
+        value = self.cleaned_data.get("value", "")
+        value = value.strip()
+        if not value:
+            raise forms.ValidationError("Informe um valor.")
+        if len(value) > 32:
+            raise forms.ValidationError("O valor deve ter no máximo 32 caracteres.")
         return value
