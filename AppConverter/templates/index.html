@@ -1,47 +1,53 @@
 <!DOCTYPE html>
 {% load static %}
-<html lang="en">
-
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roman Numeral Convert</title>
+    <title>Conversor de números romanos</title>
     <link rel="stylesheet" href="{% static 'style.css' %}">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" defer></script>
     <script>
-        $(document).ready(function() {
-            $('#data-form').on('submit', function(event) {
-                event.preventDefault();
+        document.addEventListener("DOMContentLoaded", function () {
+            const form = document.getElementById("data-form");
+            const result = document.getElementById("resultado");
 
-                $.ajax({
-                    url: "{% url 'converter' %}",
-                    type: "POST",
-                    data: $(this).serialize(),
-                    success: function(response) {
-                        $('#resultado').html(response.resultado);
-                    },
-                    error: function(xhr, status, error) {
-                        var response = JSON.parse(xhr.responseText);
-                        $('#resultado').html(response.erro);
+            form.addEventListener("submit", async function (event) {
+                event.preventDefault();
+                result.textContent = "Convertendo...";
+
+                try {
+                    const response = await fetch("{% url 'converter' %}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                            "X-Requested-With": "XMLHttpRequest"
+                        },
+                        body: new URLSearchParams(new FormData(form))
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.erro || "Não foi possível converter o valor.");
                     }
-                });
+                    result.textContent = data.resultado;
+                } catch (error) {
+                    result.textContent = error.message || "Ocorreu um erro inesperado.";
+                }
             });
         });
     </script>
 </head>
-
 <body>
-    <div class="container">
+    <main class="container">
         <h1>Conversor de números romanos</h1>
-        <div class="form-container">
+        <section class="form-container">
             <form id="data-form">
                 {% csrf_token %}
                 {{ form.as_p }}
-                <button type="submit">Enviar</button>
+                <button type="submit">Converter</button>
             </form>
-            <div id="resultado" class="result"></div>
-        </div>
-    </div>
+            <p id="resultado" class="result" role="status" aria-live="polite"></p>
+        </section>
+    </main>
 </body>
-
 </html>

@@ -1,4 +1,5 @@
 from django.db import models
+
 from .choices import DataTypeChoices
 
 
@@ -7,13 +8,9 @@ class DataInput(models.Model):
         max_length=1,
         choices=DataTypeChoices.choices,
         default=DataTypeChoices.TEXT,
-        verbose_name="Tipo de Conversão"
+        verbose_name="Tipo de Conversão",
     )
-    value = models.TextField(verbose_name="Entrada")
+    value = models.CharField(max_length=32, verbose_name="Entrada")
 
-    def save(self, *args, **kwargs):
-        if self.data_type == DataTypeChoices.TEXT:
-            self.value = int(self.value)
-        elif self.data_type == DataTypeChoices.FLOAT:
-            self.value = float(self.value)
-        super().save(*args, **kwargs)
+    def __str__(self):
+        return f"{self.get_data_type_display()}: {self.value}"
