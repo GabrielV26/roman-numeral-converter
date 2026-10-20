@@ -73,7 +73,7 @@ class RealConverter:
 
     def real_to_roman_real(self, value):
         text = str(value).strip()
-        if not re.fullmatch(r"d+(?:.d+)?", text):
+        if not re.fullmatch(r"\d+(?:\.\d+)?", text):
             return None
         parts = text.split(".")
         converted = []
